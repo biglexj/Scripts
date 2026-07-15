@@ -1,0 +1,19 @@
+REGISTRO DE PRUEBAS DE NAVEGACIÓN Y EJECUCIÓN DOM - ELY CORE
+=============================================================
+Creador: Biglex
+Fecha/Hora de Ejecución: 28/03/2026
+
+FASE 1: Ejecución vía PowerShell (Start Chrome)
+- Estado: Completado en panel Aurora, pero fallido en interfaz física (standby / bloqueo de inyección por llave RPC incorrecta).
+- Conclusión: El comando se marca como exitoso por el backend de C#, pero no se ve reflejado en el navegador del host debido a la desconexión del canal de control.
+
+FASE 2: Apertura Forzada vía App.Open (Target: Browser)
+- URL Solicitada: https://www.youtube.com/results?search_query=Ievan+Polkka+Hatsune+Miku
+- Estado: ¡EJECUTADO CON ÉXITO! (PID: 28332)
+- Conclusión: Forzar la herramienta nativa del companion evita el bypass de PowerShell y abre directamente la ventana activa.
+
+FASE 3: Interacción e Inyección DOM para Auto-Play (Pendiente de verificación)
+- Estado: En progreso. Evaluando la respuesta física del navegador para inyectar el evento click.
+
+NOTAS DEL SISTEMA:
+El loop de verificación autónoma se mantendrá activo para corregir desviaciones.
