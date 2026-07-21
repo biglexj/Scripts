@@ -10,6 +10,7 @@ El objetivo es alinear este proyecto con las plantillas de documentación están
 2. **Inicializar Documentos Faltantes (sin sobreescribir)**:
    - Inspecciona las plantillas en `D:\Proyectos\biglexj\Scripts\templates`.
    - Crea `agent.md`, `ROADMAP.md` y `RELEASE_MESSAGE.md` en la raíz de este proyecto (solo si no existen).
+   - Genera `.agents/rules/base.md` desde `templates/agent.md`, con frontmatter `trigger: always_on`, sin sobrescribir reglas existentes.
    - **Reemplazo de Placeholders**: Sustituye `{{PROJECT_NAME}}`, `{{YEAR}}`, `{{AUTHOR}}`, `{{DATE}}` y `{{LICENSE}}` con la información del proyecto actual.
    - **Adaptación Tecnológica**: Adapta cualquier regla de la plantilla `agent.md` al ecosistema tecnológico de este proyecto (por ejemplo, si el proyecto no es Node.js, reemplaza la mención de `package.json` por los archivos de configuración de versiones reales como `.csproj`, `Cargo.toml`, `pyproject.toml`, `go.mod`, etc.).
 

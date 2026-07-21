@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 from datetime import datetime
+from pathlib import Path
 
 # Colores ANSI para el estilo Biglex J
 CYAN = "\033[96m"
@@ -95,6 +96,49 @@ LICENSES = {
     "4": ("Propietaria", PROPRIETARY_LICENSE)
 }
 
+def render_template(content, project_name, year, author, today_str, license_name):
+    """Renderiza los valores comunes usados por documentos y reglas."""
+    replacements = {
+        "{{PROJECT_NAME}}": project_name,
+        "{{YEAR}}": year,
+        "{{AUTHOR}}": author,
+        "{{DATE}}": today_str,
+        "{{LICENSE}}": license_name,
+    }
+    for placeholder, value in replacements.items():
+        content = content.replace(placeholder, value)
+    return content
+
+
+def write_text_safely(path, content, force=False):
+    """Crea un archivo sin destruir contenido existente por defecto."""
+    path = Path(path)
+    if path.exists() and not force:
+        print(f"  {YELLOW}↷{RESET} {GRAY}Conservado {path} (ya existe){RESET}")
+        return "skipped"
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    action = "Actualizado" if force else "Creado"
+    print(f"  {GREEN}✓{RESET} {GRAY}{action} {path}{RESET}")
+    return "written"
+
+
+def ensure_gitignore_entries(dest_dir):
+    """Añade exclusiones temporales sin reemplazar el .gitignore actual."""
+    gitignore_path = Path(dest_dir) / ".gitignore"
+    existing = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
+    current_lines = {line.strip() for line in existing.splitlines()}
+    missing = [entry for entry in ("/test/", "/scratch/") if entry not in current_lines]
+    if not missing:
+        print(f"  {GREEN}✓{RESET} {GRAY}.gitignore ya contiene /test/ y /scratch/{RESET}")
+        return
+
+    separator = "" if not existing or existing.endswith("\n") else "\n"
+    updated = existing + separator + "\n# Archivos temporales de agentes\n" + "\n".join(missing) + "\n"
+    gitignore_path.write_text(updated, encoding="utf-8")
+    print(f"  {GREEN}✓{RESET} {GRAY}Actualizado .gitignore ({', '.join(missing)}){RESET}")
+
 def get_input(prompt, default=None, options=None):
     while True:
         suffix = f" [{default}]" if default else ""
@@ -125,6 +169,8 @@ def main():
     parser.add_argument("--name", help="Nombre del proyecto")
     parser.add_argument("--dir", help="Directorio de destino (por defecto el actual)")
     parser.add_argument("--license", choices=["MIT", "Apache-2.0", "GPL-3.0", "Propietaria"], help="Tipo de licencia")
+    parser.add_argument("--force", action="store_true", help="Sobrescribe documentos y reglas existentes")
+    parser.add_argument("--no-rules", action="store_true", help="No genera .agents/rules/base.md")
     args = parser.parse_args()
 
     # Limpiar argumentos de comillas externas que puedan venir de la consola
@@ -187,13 +233,16 @@ def main():
     # Asegurar que el directorio de destino exista
     os.makedirs(dest_dir, exist_ok=True)
 
+    # Configurar exclusiones temporales sin destruir reglas existentes.
+    ensure_gitignore_entries(dest_dir)
+
     # Generar LICENSE
     license_content = license_template.format(year=year, author=author)
     license_path = os.path.join(dest_dir, "LICENSE")
     try:
-        with open(license_path, "w", encoding="utf-8") as f:
-            f.write(license_content)
-        print(f"  {GREEN}✓{RESET} {GRAY}Creado LICENSE ({license_name}){RESET}")
+        result = write_text_safely(license_path, license_content, args.force)
+        if result == "written":
+            print(f"    {GRAY}Licencia seleccionada: {license_name}{RESET}")
     except Exception as e:
         print(f"  {RED}✗ Error al crear LICENSE: {e}{RESET}")
 
@@ -210,19 +259,24 @@ def main():
             with open(src_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            # Reemplazar placeholders
-            content = content.replace("{{PROJECT_NAME}}", project_name)
-            content = content.replace("{{YEAR}}", year)
-            content = content.replace("{{AUTHOR}}", author)
-            content = content.replace("{{DATE}}", today_str)
-            content = content.replace("{{LICENSE}}", license_name)
-
-            with open(dest_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            
-            print(f"  {GREEN}✓{RESET} {GRAY}Creado {filename}{RESET}")
+            content = render_template(content, project_name, year, author, today_str, license_name)
+            write_text_safely(dest_path, content, args.force)
         except Exception as e:
             print(f"  {RED}✗ Error al crear {filename}: {e}{RESET}")
+
+    # Materializar las instrucciones compartidas como regla siempre activa.
+    if not args.no_rules:
+        agent_template_path = os.path.join(templates_dir, "agent.md")
+        rules_path = os.path.join(dest_dir, ".agents", "rules", "base.md")
+        try:
+            with open(agent_template_path, "r", encoding="utf-8") as f:
+                rule_content = render_template(
+                    f.read(), project_name, year, author, today_str, license_name
+                )
+            rule_content = "---\ntrigger: always_on\n---\n\n" + rule_content.lstrip()
+            write_text_safely(rules_path, rule_content, args.force)
+        except Exception as e:
+            print(f"  {RED}✗ Error al crear reglas del agente: {e}{RESET}")
 
     print(f"\n{GREEN}✨ ¡Documentación de proyecto inicializada con éxito!{RESET}")
     print(f"{CYAN}📂 Ubicación: {WHITE}{dest_dir}{RESET}\n")

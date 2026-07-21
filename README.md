@@ -57,6 +57,17 @@ Si has configurado tu `$PROFILE`, puedes usar estos comandos desde cualquier ter
 | `renombrar-it` | `renombrar_archivos_carpetas.py` | Renombrado masivo inteligente. |
 | `sfx-gen` | `estructura_sfx.ps1` | Generar estructura para SFX. |
 | `wav2flac` | `wav_a_flac.py` | Convertir WAV a FLAC. |
+| `init-docs` | `init_project_docs.py` | Crear documentación y `.agents/rules/base.md` desde las plantillas. |
+
+### Inicializar documentación y reglas
+
+Desde la raíz de cualquier proyecto:
+
+```powershell
+init-docs
+```
+
+El comando procesa los placeholders de `templates/`, conserva archivos existentes y crea la regla siempre activa `.agents/rules/base.md`. Usa `init-docs --force` únicamente cuando quieras regenerar y sobrescribir los documentos administrados; `--no-rules` omite la regla.
 
 ---
 
