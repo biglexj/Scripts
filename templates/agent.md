@@ -50,7 +50,7 @@ The agent must keep documentation clean and updated according to the following g
 - **Urgente / Importante**: Tareas críticas, corrección de errores, requerimientos indispensables para el hito actual.
 - **Intermedio**: Tareas secundarias, mejoras de rendimiento o funcionalidades opcionales.
 - **Descartado / En pausa**: Propuestas fuera del plan activo que se conservan con su razón y contexto para una posible reevaluación.
-- **Completado**: Historial limpio de tareas finalizadas.
+- **Completado**: Historial limpio de tareas finalizadas. Agrupar los cambios de cada versión bajo un único encabezado por versión (`- [x] **vX.X.X**`) y desglosar sus características como viñetas sangradas (`  - Característica 1`), sin duplicar la etiqueta de versión en líneas consecutivas.
 - Mantener descripciones claras, concisas y estructuradas.
 
 ### 2. RELEASE_NOTES.md

@@ -14,4 +14,5 @@ Plan de trabajo, objetivos y prioridades del proyecto.
 - ⏸️ Propuesta descartada que se conserva para una posible reevaluación
 
 ## 🟢 Completado
-- [x] Hito inicial del proyecto
+- [x] **v1.0.0**
+  - Hito inicial del proyecto y funcionalidades base.
