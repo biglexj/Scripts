@@ -17,9 +17,12 @@ Si necesitas referencias sobre la arquitectura, el lenguaje de diseño, los comp
 - **Raíz del Proyecto**: `d:\Proyectos\biglexj\Aurora---Blog` (especialmente su archivo [agent.md](file:///d:/Proyectos/biglexj/Aurora---Blog/agent.md))
 - **Documentación del Proyecto**: [docs](file:///d:/Proyectos/biglexj/Aurora---Blog/docs) (incluyendo la guía de diseño en [DESIGN.md](file:///d:/Proyectos/biglexj/Aurora---Blog/docs/es/frontend/Lenguaje%20de%20Dise%C3%B1o/DESIGN.md) y la estructura de directorios en [Arbol de Carpetas.md](file:///d:/Proyectos/biglexj/Aurora---Blog/docs/es/guides/Arbol%20de%20Carpetas.md))
 
-## Estructura de Carpetas de Trabajo [CRÍTICO]
-> La estructura de carpetas del proyecto está definida en la regla [folder_structure.md](.agents/rules/folder_structure.md). Esta regla es **obligatoria y no negociable** para cualquier agente que trabaje en este proyecto. Todo nuevo archivo o carpeta DEBE seguir la convención establecida allí antes de ser creado.
+## Estructura de Carpetas & Lenguaje de Diseño [CRÍTICO]
+> La estructura de carpetas del proyecto está definida en [folder_structure.md](.agents/rules/folder_structure.md). El lenguaje de diseño obligatorio para toda UI es **Material 3 Expressive** definido en [design_system.md](.agents/rules/design_system.md). La lógica de autodescarga de actualizaciones está en [auto_updater.md](.agents/rules/auto_updater.md). Estas reglas son **obligatorias y no negociables**.
 
+- **Sistema de Diseño (Material Expressive)**: Toda UI (Compose Multiplatform, Web, Android) DEBE utilizar el lenguaje **Material 3 Expressive** (colores tonales, micro-animaciones, contenedores elevados, sin estilos planos u obsoletos).
+- **Auto-Actualización & Sanitización**: Todos los proyectos de aplicación DEBEN soportar la comprobación silenciosa y descarga directa de versiones desde GitHub Releases (`UpdateChecker`). Las notas de versión deben sanitizarse limpiamente (`sanitizeReleaseNotes`) eliminando Markdown crudo. Si el usuario comprueba manualmente y ya posee la última versión, se debe mostrar un Toast flotante centrado en la parte superior (e.g. `✅ Estás en la última versión`).
+- **Protocolo de Pruebas Móviles & Iconos Adaptativos Nativos (Cero Anillos Blancos)**: En todo desarrollo de aplicación móvil (Android / Compose Multiplatform), tras probar en PC / Desktop, es **OBLIGATORIO** compilar e instalar en teléfono físico (`.\gradlew installDebug`) para validar la UI móvil táctil. Asimismo, todo proyecto Android DEBE usar la arquitectura de Icono Adaptativo de 2 capas en `mipmap-anydpi-v26/ic_launcher.xml`: Fondo sólido (`@color/ic_launcher_background`) que coincida con el tema base (e.g. `#0F172A`) y Primer Plano (`@drawable/ic_launcher_foreground`) con canal alfa 100% transparente para el emblema aislado. Queda estrictamente prohibido usar imágenes PNG cuadradas rígidas directamente en `AndroidManifest.xml` sin capa adaptativa, evitando que Android genere contenedores o marcos blancos alrededor del icono.
 - **Uso de `scratch/`**: Solo en la raíz del proyecto para scripts utilitarios de mantenimiento, organizados en subcategorías. **Prohibido** dentro de cualquier carpeta de código fuente (`frontend/`, `backend/`, `src/`).
 - **Uso de `test/`**: Scripts de prueba temporales en `test/` de la raíz. Ignorado en `.gitignore`.
 
@@ -33,7 +36,8 @@ Si necesitas referencias sobre la arquitectura, el lenguaje de diseño, los comp
 
 ## Development Workflow & Planning (CRITICAL)
 - **Planning Mode**: Before executing complex changes, refactoring, or new features, the agent must create an `implementation_plan.md` in the task context or workspace and wait for the user's approval.
-- **Task Tracking**: Once approved, create `task.md` to track progress of task checklists.
+- **Task Tracking & TASKS.md**: Use `TASKS.md` for active development tasks, technical phases (`Fase 0`, `Fase 1`, ...) and verification checklists. Once a task is validated in `TASKS.md`, move it to `ROADMAP.md` under `## 🟢 Completado` (`- [x] **vX.X.X**`).
+- **Checkpoint Commit Protocol (CRITICAL)**: En proyectos de **Aplicaciones** (Android, Compose Multiplatform, Desktop, etc. — no aplica a páginas web salvo solicitud explícita), tan pronto como se concluya un release o versión oficial y se comience a trabajar en una nueva versión/hiclo (desde el primer momento en que se pica código), el agente DEBE crear periódicamente commits de resguardo (ej. `checkpoint: session YYYY-MM-DD - [tarea/hito]`) para ir salvaguardando todos los avances y prevenir pérdidas imprevistas.
 - **Verification**: Always verify code builds, and run unit tests or manual tests to verify code. Use `walkthrough.md` to document changes made.
 
 ## Customization Rules (.agents/rules/)
@@ -45,15 +49,13 @@ Si necesitas referencias sobre la arquitectura, el lenguaje de diseño, los comp
 ## Documentation Maintenance Rules
 The agent must keep documentation clean and updated according to the following guidelines:
 
-### 1. ROADMAP.md
-- **Orden obligatorio**: Mantener siempre cuatro bloques: pendientes urgentes o normales arriba, planes intermedios después, descartados/en pausa como penúltimo bloque y completados al final. Al cambiar el estado de una tarea, moverla al bloque correspondiente; nunca eliminar una propuesta descartada si puede conservar contexto útil para retomarla.
-- **Urgente / Importante**: Tareas críticas, corrección de errores, requerimientos indispensables para el hito actual.
-- **Intermedio**: Tareas secundarias, mejoras de rendimiento o funcionalidades opcionales.
-- **Descartado / En pausa**: Propuestas fuera del plan activo que se conservan con su razón y contexto para una posible reevaluación.
-- **Completado**: Historial limpio de tareas finalizadas. Agrupar los cambios de cada versión bajo un único encabezado por versión (`- [x] **vX.X.X**`) y desglosar sus características como viñetas sangradas (`  - Característica 1`), sin duplicar la etiqueta de versión en líneas consecutivas.
-- Mantener descripciones claras, concisas y estructuradas.
+### 1. ROADMAP.md & TASKS.md
+- **ROADMAP.md**: Hoja de ruta estratégica de producto con cuatro bloques obligatorios: pendientes activos arriba (`## 🔴 Pendientes activos`), ideas intermedias (`## 🟡 Intermedio`), descartados/en pausa (`## ⚪ Descartado / En Pausa`) e historial limpio de versiones completadas (`## 🟢 Completado` -> `- [x] **vX.X.X**`).
+- **TASKS.md**: Documento dinámico de seguimiento técnico de tareas del sprint activo, fases técnicas (`Fase 0`, `Fase 1`, ...) y checklist de verificación y pruebas.
+- **Flujo de Tareas**: Las tareas en desarrollo y verificación viven en `TASKS.md`. Una vez validada una tarea, pasa al historial de versiones completadas en `ROADMAP.md`.
 
 ### 2. RELEASE_NOTES.md
+- **Sanitización de Notas (CRÍTICO)**: Los mensajes de las notas de lanzamiento deben ser completamente limpios y profesionales. DEBEN eliminar cualquier referencia a rutas locales de archivos del entorno de desarrollo (ej. `d:\Proyectos\...`), nombres de variables o archivos de depuración internos, referencias a instrucciones del agente o volcados de consola técnicos. Deben estar redactados desde la perspectiva del usuario y del producto final.
 - **Extensión proporcional (CRÍTICO)**: La cantidad de párrafos debe responder al alcance real, no a una cuota fija: 1 para un hito pequeño, 2 cuando existen dos cambios relevantes, 3 como extensión habitual, 4 para hitos relativamente grandes y hasta 5 para lanzamientos de gran alcance. Cada párrafo debe agrupar un cambio principal y evitar listas detalladas de archivos.
 - **No duplicar versiones**: Si una versión ya está registrada localmente pero aún no se ha hecho push a Git, añadir los nuevos cambios bajo la misma versión activa en lugar de crear una nueva versión de parche.
 - **Límite de Parches (Regla del .9)**: Nunca pasar de una versión de parche `.9` (por ejemplo, de `1.0.9` pasar a `1.1.0` en lugar de `1.0.10`).
@@ -65,7 +67,15 @@ The agent must keep documentation clean and updated according to the following g
   - Resumen rápido del lanzamiento.
   - Novedades destacadas (lista corta con viñetas).
 
+## Official Support, Donation & About Rules [CRÍTICO]
+Toda aplicación del ecosistema (Compose Multiplatform, Web, Android, Desktop, etc.) DEBE incluir una sección o insignia de "Acerca de la Aplicación" con su correspondiente modal/diálogo informativo y botones de apoyo oficial adaptados al lenguaje de interfaz del proyecto:
+- **Badge / Enlace "Acerca de"**: Ubicado en el pie de página o barra lateral/configuración de la interfaz. Al pulsar, despliega información de versión, autoría (`biglexj`), licencia y un mensaje de agradecimiento al usuario.
+- **Botón Donación Directa (Principal / Local e Internacional)**: Apoyo directo en `https://www.biglexj.com/donaciones` (Yape, Plin, transferencias locales e internacionales).
+- **Botón Buy Me a Coffee (Internacional)**: Apoyo global mediante `https://buymeacoffee.com/biglexj`.
+- **Botón GitHub**: Enlace al perfil oficial `https://github.com/biglexj`.
+
 ## Official Support & Donation Links
 - **Buy Me a Coffee**: `https://buymeacoffee.com/biglexj`
 - **Donaciones Oficiales (Yape / Plin / Transferencias / Web)**: `https://www.biglexj.com/donaciones`
+- **Perfil de GitHub**: `https://github.com/biglexj`
 
