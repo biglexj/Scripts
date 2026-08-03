@@ -64,8 +64,8 @@ trigger: always_on
 
 ## Regla de Crecimiento de Archivos
 
-Si un archivo supera las **400 líneas**, el agente DEBE proponer su división en sub-componentes antes de continuar añadiendo código. Los archivos de más de **600 líneas** son **deuda técnica activa** y deben registrarse en el ROADMAP como tarea de refactorización pendiente.
+Como buena práctica, se debe **evitar normalmente que un archivo supere las 800 - 900 líneas**. El límite máximo permitido es de **1000 a 1200 líneas** (pudiendo llegar excepcionalmente hasta **1220 líneas**). Los archivos que superen las **1200 - 1220 líneas** son **deuda técnica activa** y el agente DEBE proponer su división en sub-componentes y registrarlo en el ROADMAP como tarea de refactorización pendiente.
 
-- **Páginas / Screens**: Máximo ~300 líneas de lógica de composición.
-- **Componentes complejos**: Si supera 400 líneas, extraer en sub-componentes dentro de su carpeta de feature.
-- **Shared components**: Máximo ~200 líneas por componente atómico.
+- **Límite Preferido**: Evitar exceder de 800 a 900 líneas por archivo.
+- **Límite Máximo Absoluto**: 1000 a 1200 líneas (máximo 1220 líneas excepcionales).
+- **Componentes y Screens**: Si un archivo supera las 1200 líneas, extraer sub-componentes en su carpeta de feature.

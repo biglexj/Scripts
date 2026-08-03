@@ -1,6 +1,6 @@
 # 🚀 Guía de Auto-Actualización Directa desde GitHub (Android & KMP)
 
-Esta guía explica cómo implementar en cualquier proyecto (Android nativo o Kotlin Multiplatform) la funcionalidad de comprobar actualizaciones automáticamente desde **GitHub Releases**, descargar la última versión de la APK en segundo plano usando `DownloadManager` y solicitar al usuario la instalación con un solo clic.
+Esta guía explica cómo implementar en cualquier proyecto (Android nativo o Kotlin Multiplatform) la funcionalidad de comprobar actualizaciones automáticamente desde **GitHub Releases**, mostrar el **Modal Central Interactivo al 80%**, descargar la última versión de la APK en segundo plano con reporte de progreso (0-100%) y solicitar la instalación limpia con `FileProvider`.
 
 ---
 
@@ -79,50 +79,104 @@ object UpdateChecker {
 
 ---
 
-### 3. Petición a la API de GitHub
+### 3. Modal Central Interactivo al 80% de Ancho (`UpdateModalDialog.kt`)
+
+> [!IMPORTANT]
+> Los diálogos de actualización en móvil DEBEN usar `DialogProperties(usePlatformDefaultWidth = false)` y `fillMaxWidth(0.80f)` con `widthIn(max = 480.dp)`. Esto evita el encajonamiento de Compose y garantiza que botones de acción como "Descargar" o "Instalar" no se corten.
 
 ```kotlin
-suspend fun fetchLatestRelease(owner: String, repo: String): UpdateRelease? = withContext(Dispatchers.IO) {
-    runCatching {
-        val url = java.net.URL("https://api.github.com/repos/$owner/$repo/releases/latest")
-        val connection = url.openConnection() as java.net.HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
-        connection.setRequestProperty("User-Agent", "$repo-App-Updater")
-        if (connection.responseCode == 200) {
-            val json = connection.inputStream.bufferedReader().use { it.readText() }
-            UpdateChecker.parseUpdateRelease(json)
-        } else null
-    }.getOrNull()
+@Composable
+fun UpdateModalDialog(
+    state: LunaFetchState,
+    presenter: LunaFetchPresenter,
+) {
+    if (!state.showUpdateModal || state.availableUpdate == null) return
+
+    Dialog(
+        onDismissRequest = { presenter.dismissUpdateModal() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = !state.isUpdateDownloading,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.80f)
+                .widthIn(max = 480.dp)
+                .padding(vertical = 16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+        ) {
+            // Contenido con Novedades formateadas en Markdown y Barra de Progreso (0-100%)
+        }
+    }
 }
 ```
 
 ---
 
-### 4. Descargar e Iniciar Instalación en Android (`DownloadManager`)
+### 4. Cierre Síncrono de Diálogos Flotantes ("Acerca de")
+
+Al accionar "Buscar actualizaciones" desde una ventana flotante ("Acerca de"), la interfaz DEBE:
+1. Llamar a `onDismiss()` en la ventana flotante para cerrarla inmediatamente.
+2. Actualizar el estado de la UI (`showUpdateModal = true`) de forma síncrona en el hilo principal antes o simultáneamente con la corrutina de red. Esto elimina cualquier pantalla vacía o destello blanco entre diálogos.
 
 ```kotlin
-fun downloadAndInstallApk(context: Context, release: UpdateRelease, appName: String) {
-    if (release.downloadUrl.endsWith(".apk", ignoreCase = true)) {
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
-        if (dm != null) {
-            val request = DownloadManager.Request(Uri.parse(release.downloadUrl)).apply {
-                setTitle("Descargando $appName v${release.version}")
-                setDescription("Nueva actualización disponible")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(
-                    Environment.DIRECTORY_DOWNLOADS,
-                    "$appName-v${release.version}.apk"
-                )
-                setMimeType("application/vnd.android.package-archive")
+OutlinedButton(
+    onClick = {
+        onDismiss() // Cierra el modal "Acerca de"
+        presenter.checkForUpdates(manual = true) // Abre síncronamente el modal de actualización
+    },
+    modifier = Modifier.fillMaxWidth().height(44.dp),
+    shape = RoundedCornerShape(50),
+) {
+    Text("🔄 Buscar actualizaciones", style = MaterialTheme.typography.labelLarge)
+}
+```
+
+---
+
+### 5. Renderizado Limpio del `body` en Markdown
+
+```kotlin
+fun renderCleanReleaseNotes(rawMarkdown: String): String {
+    if (rawMarkdown.isBlank()) return ""
+    return rawMarkdown.lineSequence()
+        .map { line ->
+            var clean = line.trim()
+            if (clean.startsWith("#")) {
+                clean = clean.dropWhile { it == '#' || it.isWhitespace() }
             }
-            dm.enqueue(request)
-            return
+            clean = clean.replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
+            clean = clean.replace(Regex("\\*(.*?)\\*"), "$1")
+            if (clean.startsWith("- ") || clean.startsWith("* ")) {
+                clean = "• " + clean.substring(2)
+            }
+            clean
         }
-    }
-    // Si no es un APK o falla DownloadManager, abrir en el navegador
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(release.releasePageUrl)).apply {
+        .filter { it.isNotBlank() }
+        .joinToString("\n\n")
+}
+```
+
+---
+
+### 6. Descargar e Iniciar Instalación Nativa en Android (`FileProvider`)
+
+```kotlin
+fun installDownloadedApk(context: Context, filePath: String) {
+    val file = File(filePath)
+    if (!file.exists()) return
+    val apkUri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(apkUri, "application/vnd.android.package-archive")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     context.startActivity(intent)
@@ -131,134 +185,28 @@ fun downloadAndInstallApk(context: Context, release: UpdateRelease, appName: Str
 
 ---
 
-## 📌 Permisos Necesarios en `AndroidManifest.xml`
+## 📌 Permisos e Integración en `AndroidManifest.xml`
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-```
 
-> **Nota**: Para Android 8.0 (API 26) o superior, el usuario deberá conceder permiso a la aplicación para instalar aplicaciones desconocidas si descarga fuera de Google Play.
-
----
-
-## 📝 Resumen del Flujo de Trabajo
-
-1. Al abrir la app, ejecuta `checkSilent()` — verificación en background sin feedback visible.
-2. Compara `UpdateChecker.isNewerVersion(currentVersion, release.version)`.
-3. Si hay una versión superior, muestra el `UpdateBanner` flotante.
-4. Si el usuario pulsa "Buscar actualizaciones" manualmente y ya está al día, muestra el toast global ✅ 4 s.
-5. Al hacer clic en "Actualizar", llama a `downloadAndInstallApk(context, release, appName)`.
-
----
-
-### 5. Sanitización del `body` de GitHub Releases
-
-> [!IMPORTANT]
-> El campo `body` de la API de GitHub contiene **Markdown crudo** con `\r\n`, `**negrita**`, `## Títulos`, backticks, etc. Siempre sanitizarlo antes de mostrarlo en la UI.
-
-```kotlin
-/** Elimina sintaxis Markdown básica y saltos de línea para mostrar texto limpio en la UI. */
-fun sanitizeMarkdown(text: String): String =
-    text
-        .replace(Regex("\\*{1,3}(.+?)\\*{1,3}"), "$1")  // negrita / cursiva → texto plano
-        .replace(Regex("#{1,6}\\s*"), "")                 // ## Encabezados → eliminar
-        .replace(Regex("`{1,3}[^`]*`{1,3}"), "")          // `código` / ```bloque``` → eliminar
-        .replace(Regex("-\\s+"), "• ")                    // - listas → bullet
-        .replace(Regex("\\r\\n|\\n\\r|\\r"), " ")         // saltos de línea CRLF/CR → espacio
-        .replace("\n", " ")                               // saltos de línea LF → espacio
-        .replace(Regex(" {2,}"), " ")                     // espacios múltiples → uno
-        .trim()
-```
-
-**Uso en `UpdateBanner`:**
-
-```kotlin
-val bodyText = release.body
-    .let { sanitizeMarkdown(it) }
-    .ifBlank { "Hay una versión más reciente con mejoras de rendimiento y correcciones." }
-
-Text(
-    text = bodyText,
-    style = MaterialTheme.typography.bodySmall,
-    maxLines = 2,
-    overflow = TextOverflow.Ellipsis,
-)
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="${applicationId}.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+</provider>
 ```
 
 ---
 
-### 6. Toast Global "Estás al día" (KMP Desktop / Multiplatform)
+## 📝 Resumen de Reglas de Oro
 
-Cuando la verificación manual **no** encuentra una versión nueva, mostrar un toast flotante sobre toda la UI con auto-dismiss de 4 segundos:
-
-```kotlin
-// En el ViewModel / estado raíz:
-var upToDate by remember { mutableStateOf(false) }
-
-// Auto-dismiss tras 4 s:
-LaunchedEffect(upToDate) {
-    if (upToDate) {
-        delay(4_000)
-        upToDate = false
-    }
-}
-
-// Overlay en la raíz del árbol (dentro de Box que cubre toda la pantalla):
-AnimatedVisibility(
-    visible = upToDate,
-    modifier = Modifier
-        .align(Alignment.TopCenter)
-        .padding(top = 16.dp),
-    enter = fadeIn() + slideInVertically { -it },
-    exit  = fadeOut() + slideOutVertically { -it },
-) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor   = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-    ) {
-        Text(
-            text = "✅ Estás en la última versión de LyraFlow.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-        )
-    }
-}
-```
-
-> [!TIP]
-> Coloca el `AnimatedVisibility` **fuera** de cualquier `ScrollableColumn` o pantalla específica, directamente en el `Box` raíz de `Surface`, para que el toast sea visible sin importar en qué pantalla esté el usuario.
-
----
-
-### 7. Separar Check Silencioso del Check Manual
-
-```kotlin
-// Silencioso al iniciar — sin feedback si ya está al día:
-val checkSilent: suspend () -> Unit = {
-    val release = updateService.checkLatestRelease()
-    if (release != null && UpdateChecker.isNewerVersion(currentVersion, release.version)) {
-        availableUpdate = release
-    }
-}
-
-// Manual — siempre informa el resultado:
-val checkForUpdates: () -> Unit = {
-    upToDate = false
-    scope.launch {
-        val release = updateService.checkLatestRelease()
-        if (release != null && UpdateChecker.isNewerVersion(currentVersion, release.version)) {
-            availableUpdate = release
-            upToDate = false
-        } else {
-            upToDate = true  // activa el toast global
-        }
-    }
-}
-
-LaunchedEffect(Unit) { checkSilent() }
-```
+1. **80% Ancho de pantalla** (`usePlatformDefaultWidth = false`) en modales de actualización.
+2. **Cierre de diálogos previos**: Si el usuario consulta actualizaciones desde "Acerca de", cerrar ese cuadro primero.
+3. **Transición síncrona sin parpadeos**: Actualizar el estado en el hilo principal antes de resolver la corrutina de red.
+4. **Ocultamiento de Banners duplicados**: Si el modal central está activo, el `UpdateBanner` superior no se renderiza.
