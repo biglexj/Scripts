@@ -1,6 +1,6 @@
 # Instrucción para el Agente: Alineación de Documentación del Proyecto
 
-El objetivo es alinear este proyecto con las plantillas de documentación estándar de Biglex J de forma segura, sin sobreescribir ni destruir información existente (como historiales de cambios o licencias).
+El objetivo es alinear este proyecto con la Documentación Core de Biglex J de forma segura, sin sobreescribir ni destruir información existente (como historiales de cambios o licencias).
 
 ## Tareas a Realizar:
 
@@ -8,9 +8,14 @@ El objetivo es alinear este proyecto con las plantillas de documentación están
    - Añade `/test/` y `/scratch/` al archivo `.gitignore` del proyecto para evitar subir archivos temporales al repositorio.
 
 2. **Inicializar Documentos Faltantes (sin sobreescribir)**:
-   - Inspecciona las plantillas en `D:\Proyectos\biglexj\Scripts\templates`.
+   - Inspecciona las plantillas oficiales en `D:\Proyectos\biglexj\Core-Docs\templates`.
+   - Considera `Core-Docs` como la fuente oficial. No uses copias antiguas ubicadas dentro de `Scripts`.
    - Crea `agent.md`, `ROADMAP.md` y `RELEASE_MESSAGE.md` en la raíz de este proyecto (solo si no existen).
-   - Genera `.agents/rules/base.md` desde `templates/agent.md`, con frontmatter `trigger: always_on`, sin sobrescribir reglas existentes.
+   - Genera `.agents/rules/base.md` desde `Core-Docs\templates\agents\agent.md`, con frontmatter `trigger: always_on`, sin sobrescribir reglas existentes.
+   - Crea `process/active`, `process/completed`, `process/archive`, `process/templates` y `process/README.md` desde la Documentación Core.
+   - Genera `.agents/rules/folder_structure.md` desde `Core-Docs\templates\project\folder_structure.md`.
+   - Genera `.agents/rules/core_profile.md` desde `Core-Docs\templates\project\core_profile.md` y completa el tipo, plataformas, stack y funciones aplicables.
+   - No crees un `TASKS.md` en la raíz. Los pendientes generales viven en `ROADMAP.md` y las tareas técnicas dentro de cada proceso activo.
    - **Reemplazo de Placeholders**: Sustituye `{{PROJECT_NAME}}`, `{{YEAR}}`, `{{AUTHOR}}`, `{{DATE}}` y `{{LICENSE}}` con la información del proyecto actual.
    - **Adaptación Tecnológica**: Adapta cualquier regla de la plantilla `agent.md` al ecosistema tecnológico de este proyecto (por ejemplo, si el proyecto no es Node.js, reemplaza la mención de `package.json` por los archivos de configuración de versiones reales como `.csproj`, `Cargo.toml`, `pyproject.toml`, `go.mod`, etc.).
 
@@ -20,4 +25,4 @@ El objetivo es alinear este proyecto con las plantillas de documentación están
    - Asigna un nombre en clave de dulce/postre a la versión mayor actual (ej: `v1.0.0`, `v2.0.0`) y coordínalo en los archivos del proyecto.
 
 4. **Confirmación**:
-   - Genera un archivo `walkthrough.md` en la raíz del proyecto o resume los cambios realizados al finalizar.
+   - Registra las comprobaciones en el `VALIDATION.md` del proceso activo y resume los cambios realizados al finalizar. No crees un `walkthrough.md` paralelo salvo que el proyecto lo exija expresamente.
